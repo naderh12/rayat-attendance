@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>تحضير رايات</title>
 
 <style>
@@ -24,14 +21,13 @@ body{
 </style>
 
 </head>
-
 <body>
 
 <div class="card">
 
 <h1>تحضير رايات</h1>
 
-<input type="file" id="excelFile" accept=".xlsx">
+<input type="file" id="excelFile">
 
 <br><br>
 
@@ -45,16 +41,14 @@ body{
 
 <script>
 
-function createSession(){
+function createSession() {
 
-    document.getElementById("result").innerHTML = `
-    <p>تم إنشاء جلسة تجريبية بنجاح ✅</p>
-    `;
+document.getElementById("result").innerHTML =
+"<p>تم إنشاء جلسة تجريبية بنجاح ✅</p>";
 
 }
 
 </script>
 
 </body>
-
 </html>
