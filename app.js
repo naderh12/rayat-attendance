@@ -1,0 +1,1 @@
+document.getElementById("createSession").onclick=()=>{document.getElementById("session").innerText="تم إنشاء جلسة تجريبية";};
