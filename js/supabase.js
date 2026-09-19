@@ -2,7 +2,7 @@ const SUPABASE_URL =
 "https://paimizculszksstmcfsq.supabase.co";
 
 const SUPABASE_KEY =
-"ضع هنا مفتاح anon كاملاً";
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhaW1pemN1bHN6a3NzdG1jZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MDk4NTYsImV4cCI6MjEwNTM4NTg1Nn0.9MlGrXKL745jPWygSuOSWVh-eLX-sR565zHYDRuufK0";
 
 async function addAttendance(
 sessionId,
