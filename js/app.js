@@ -59,7 +59,6 @@ document.getElementById('openBtn').onclick = () => {
 if (!rayatData.length) {
 
 alert('ارفع الملف أولا');
-
 return;
 
 }
@@ -91,3 +90,67 @@ sid
 );
 
 };
+
+async function getAttendanceList(){
+
+const response =
+await fetch(
+`${SUPABASE_URL}/rest/v1/attendance_temp`,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:`Bearer ${SUPABASE_KEY}`
+}
+}
+);
+
+return await response.json();
+
+}
+
+async function finishAttendance(){
+
+const attendees =
+await getAttendanceList();
+
+const attendanceIds =
+attendees.map(
+x => String(x.student_id)
+);
+
+const result =
+rayatData.map(student => {
+
+const studentId =
+String(student["Student ID"]);
+
+if(
+attendanceIds.includes(studentId)
+){
+
+student["Attendance Indicator"] =
+"Present";
+
+}else{
+
+student["Attendance Indicator"] =
+"Absent";
+
+}
+
+return student;
+
+});
+
+localStorage.setItem(
+'finalAttendance',
+JSON.stringify(result)
+);
+
+alert(
+'تم تجهيز ملف الحضور بنجاح'
+);
+
+console.log(result);
+
+}
