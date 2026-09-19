@@ -6,36 +6,25 @@ const SUPABASE_KEY =
 
 async function addAttendance(
 sessionId,
-studentId,
-studentName,
-crn
+studentId
 ){
 
 const response = await fetch(
 `${SUPABASE_URL}/rest/v1/attendance_temp`,
 {
 method:"POST",
-
 headers:{
-"apikey": SUPABASE_KEY,
-"Authorization":
-`Bearer ${SUPABASE_KEY}`,
-"Content-Type":
-"application/json",
-"Prefer":
-"return=minimal"
+"apikey":SUPABASE_KEY,
+"Authorization":`Bearer ${SUPABASE_KEY}`,
+"Content-Type":"application/json",
+"Prefer":"return=representation"
 },
-
 body:JSON.stringify({
 session_id:sessionId,
-student_id:studentId,
-student_name:studentName,
-crn:crn
+student_id:studentId
 })
-
 }
 );
 
-return response.ok;
-
+return response;
 }
