@@ -93,6 +93,26 @@ sid
 
 async function getAttendanceList(){
 
+const currentSession =
+localStorage.getItem(
+'sessionId'
+);
+
+const response =
+await fetch(
+`${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${currentSession}`,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:`Bearer ${SUPABASE_KEY}`
+}
+}
+);
+
+return await response.json();
+
+}
+
 const response =
 await fetch(
 `${SUPABASE_URL}/rest/v1/attendance_temp`,
