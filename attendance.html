@@ -3,24 +3,40 @@
 
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>تسجيل الحضور</title>
 
 <style>
+
 body{
 font-family:Tahoma;
 padding:20px;
 text-align:center;
 }
 
+h2{
+margin-top:50px;
+}
+
 input{
-padding:10px;
-font-size:20px;
+padding:12px;
+font-size:22px;
+width:250px;
 }
 
 button{
-padding:10px 20px;
-font-size:20px;
+padding:12px 25px;
+font-size:22px;
+cursor:pointer;
 }
+
+#msg{
+margin-top:20px;
+font-size:20px;
+font-weight:bold;
+}
+
 </style>
 
 </head>
@@ -39,7 +55,7 @@ placeholder="الرقم التدريبي">
 
 <div id="msg"></div>
 
-<js/supabase.jsscript
+js/supabase.jsscript>
 
 <script>
 
@@ -61,12 +77,16 @@ document
 
 if(!studentId){
 
-msg.innerHTML =
+document
+.getElementById("msg")
+.innerHTML =
 "أدخل الرقم التدريبي";
 
 return;
 
 }
+
+try{
 
 const result =
 await addAttendance(
@@ -76,14 +96,30 @@ studentId
 
 if(result.ok){
 
-msg.innerHTML =
-"تم تسجيل الحضور بنجاح ✅";
+document
+.getElementById("msg")
+.innerHTML =
+"✅ تم تسجيل الحضور بنجاح";
 
 }
 else{
 
-msg.innerHTML =
-"فشل تسجيل الحضور";
+document
+.getElementById("msg")
+.innerHTML =
+"❌ فشل تسجيل الحضور";
+
+}
+
+}
+catch(error){
+
+document
+.getElementById("msg")
+.innerHTML =
+"❌ خطأ في الاتصال";
+
+console.error(error);
 
 }
 
