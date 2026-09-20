@@ -1,43 +1,173 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>تسجيل الحضور</title>
+
 <style>
-body{font-family:Tahoma;padding:20px;text-align:center;}
-h2{margin-top:50px;}
-input{padding:12px;font-size:22px;width:250px;}
-button{padding:12px 25px;font-size:22px;cursor:pointer;}
-#msg{margin-top:20px;font-size:20px;font-weight:bold;}
-</style>
-</head>
-<body>
-<h2>تسجيل الحضور</h2>
-<input id="sid" placeholder="الرقم التدريبي">
-<button onclick="save()">تسجيل</button>
-<div id="msg"></div>
-<script src="js/supabase.js"></script>
-<script>
-const params=new URLSearchParams(window.location.search);
-const sessionId=params.get('session');
-async function save(){
- const studentId=document.getElementById('sid').value.trim();
- if(!studentId){document.getElementById('msg').innerHTML='أدخل الرقم التدريبي';return;}
- try{
-  const checkResponse=await fetch(`${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${sessionId}&student_id=eq.${studentId}`,{
-   headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}
-  });
-  const existing=await checkResponse.json();
-  if(existing.length>0){document.getElementById('msg').innerHTML='⚠️ تم تسجيل حضورك مسبقاً';return;}
-  const result=await addAttendance(sessionId,studentId);
-  if(result.ok){document.getElementById('msg').innerHTML='✅ تم تسجيل الحضور بنجاح';}
-  else{document.getElementById('msg').innerHTML='❌ فشل تسجيل الحضور';}
- }catch(error){
-  document.getElementById('msg').innerHTML='❌ خطأ في الاتصال';
-  console.error(error);
- }
+body{
+font-family:Tahoma;
+padding:20px;
+text-align:center;
 }
+
+h2{
+margin-top:50px;
+}
+
+input{
+padding:12px;
+font-size:22px;
+width:250px;
+}
+
+button{
+padding:12px 25px;
+font-size:22px;
+cursor:pointer;
+}
+
+#msg{
+margin-top:20px;
+font-size:20px;
+font-weight:bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<h2>تسجيل الحضور</h2>
+
+<input id="sid" placeholder="الرقم التدريبي">
+
+<button onclick="save()">
+تسجيل
+</button>
+
+<div id="msg"></div>
+
+js/supabase.jsscript>
+
+<script>
+
+const params =
+new URLSearchParams(
+window.location.search
+);
+
+const sessionId =
+params.get('session');
+
+async function save(){
+
+const studentId =
+document.getElementById('sid')
+.value
+.trim();
+
+if(!studentId){
+
+document.getElementById('msg')
+.innerHTML =
+'أدخل الرقم التدريبي';
+
+return;
+
+}
+
+/* التحقق من وجود الطالب في ملف رايات */
+
+const rayatData =
+JSON.parse(
+localStorage.getItem('rayatData') || '[]'
+);
+
+const existsInClass =
+rayatData.some(
+student =>
+String(student["Student ID"]) === studentId
+);
+
+if(!existsInClass){
+
+document.getElementById('msg')
+.innerHTML =
+'❌ الرقم غير موجود في هذه الشعبة';
+
+return;
+
+}
+
+try{
+
+/* منع التكرار */
+
+const checkResponse =
+await fetch(
+`${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${sessionId}&student_id=eq.${studentId}`,
+{
+headers:{
+apikey:SUPABASE_KEY,
+Authorization:`Bearer ${SUPABASE_KEY}`
+}
+}
+);
+
+const existing =
+await checkResponse.json();
+
+if(existing.length > 0){
+
+document.getElementById('msg')
+.innerHTML =
+'⚠️ تم تسجيل حضورك مسبقاً';
+
+return;
+
+}
+
+/* تسجيل الحضور */
+
+const result =
+await addAttendance(
+sessionId,
+studentId
+);
+
+if(result.ok){
+
+document.getElementById('msg')
+.innerHTML =
+'✅ تم تسجيل الحضور بنجاح';
+
+}
+else{
+
+document.getElementById('msg')
+.innerHTML =
+'❌ فشل تسجيل الحضور';
+
+}
+
+}
+catch(error){
+
+document.getElementById('msg')
+.innerHTML =
+'❌ خطأ في الاتصال';
+
+console.error(error);
+
+}
+
+}
+
 </script>
+
 </body>
 </html>
