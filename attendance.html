@@ -87,10 +87,13 @@ JSON.parse(
 localStorage.getItem('rayatData') || '[]'
 );
 
+console.log(rayatData[0]);
+
 const existsInClass =
 rayatData.some(
 student =>
-String(student["Student ID"]) === studentId
+String(student["Student ID"]).trim() ===
+String(studentId).trim()
 );
 
 if(!existsInClass){
