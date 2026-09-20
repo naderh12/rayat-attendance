@@ -88,7 +88,7 @@ location.pathname.replace(
 'attendance.html?session=' +
 sid
 );
-
+uploadStudentsToSupabase();
 };
 
 async function getAttendanceList(){
