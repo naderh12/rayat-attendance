@@ -80,14 +80,12 @@ return;
 
 }
 
-/* التحقق من وجود الطالب في ملف رايات */
+/* التحقق من وجود الطالب داخل ملف رايات */
 
 const rayatData =
 JSON.parse(
 localStorage.getItem('rayatData') || '[]'
 );
-
-console.log(rayatData[0]);
 
 const existsInClass =
 rayatData.some(
@@ -148,8 +146,7 @@ document.getElementById('msg')
 .innerHTML =
 '✅ تم تسجيل الحضور بنجاح';
 
-}
-else{
+}else{
 
 document.getElementById('msg')
 .innerHTML =
