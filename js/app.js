@@ -1,31 +1,62 @@
 let rayatData = [];
 
+
+/* =========================================================
+   عند فتح صفحة تحضير Rayat
+   نبدأ الصفحة بدون عرض جلسة قديمة
+   ========================================================= */
+
+localStorage.removeItem('sessionId');
+localStorage.removeItem('attendanceFinished');
+localStorage.removeItem('finalAttendance');
+
+if (typeof attendanceCount !== 'undefined') {
+    attendanceCount.innerHTML = 'الحضور الحالي: 0';
+}
+
+if (typeof attendanceList !== 'undefined') {
+    attendanceList.innerHTML = 'لا يوجد حضور حتى الآن';
+}
+
+if (typeof sessionInfo !== 'undefined') {
+    sessionInfo.innerHTML = '';
+}
+
+if (typeof qrcode !== 'undefined') {
+    qrcode.innerHTML = '';
+}
+
+
+/* =========================================================
+   اختيار ملف Rayat
+   ========================================================= */
+
 document.getElementById("excelFile")
 .addEventListener("change", e => {
 
-    // عند اختيار ملف Rayat جديد:
-    // مسح بيانات الجلسة السابقة من المتصفح
+    // مسح أي بيانات جلسة سابقة
     localStorage.removeItem('sessionId');
     localStorage.removeItem('attendanceFinished');
     localStorage.removeItem('finalAttendance');
 
-    // تصفير العداد والقائمة القديمة على الصفحة
+    // تصفير العداد
     document.getElementById('attendanceCount').innerHTML =
         'الحضور الحالي: 0';
 
+    // مسح قائمة الطلاب القديمة
     document.getElementById('attendanceList').innerHTML =
         'لا يوجد حضور حتى الآن';
 
-    // مسح معلومات الجلسة القديمة ورمز QR القديم
+    // مسح معلومات الجلسة القديمة
     if (typeof sessionInfo !== 'undefined') {
         sessionInfo.innerHTML = '';
     }
 
+    // مسح QR القديم
     if (typeof qrcode !== 'undefined') {
         qrcode.innerHTML = '';
     }
 
-    // قراءة الملف الجديد
     const f = e.target.files[0];
 
     if (!f) {
@@ -72,9 +103,14 @@ document.getElementById("excelFile")
 });
 
 
+/* =========================================================
+   رفع الطلاب إلى Supabase
+   ========================================================= */
+
 async function uploadStudentsToSupabase() {
 
-    const currentSession = localStorage.getItem('sessionId');
+    const currentSession =
+        localStorage.getItem('sessionId');
 
     if (!currentSession) {
         throw new Error('لا توجد جلسة حالية');
@@ -103,7 +139,8 @@ async function uploadStudentsToSupabase() {
 
         if (!response.ok) {
 
-            const errorText = await response.text();
+            const errorText =
+                await response.text();
 
             throw new Error(
                 `فشل رفع الطالب: ${errorText}`
@@ -113,19 +150,25 @@ async function uploadStudentsToSupabase() {
 }
 
 
+/* =========================================================
+   فتح الحضور
+   ========================================================= */
+
 document.getElementById('openBtn').onclick = async () => {
 
     if (!rayatData.length) {
 
-        alert('ارفع الملف أولاً');
+        alert('قم باختيار ملف Rayat أولاً');
 
         return;
     }
 
     try {
 
-        const sid = 'RAYAT-' + Date.now();
+        const sid =
+            'RAYAT-' + Date.now();
 
+        // إنشاء جلسة جديدة
         localStorage.setItem(
             'sessionId',
             sid
@@ -135,19 +178,35 @@ document.getElementById('openBtn').onclick = async () => {
             'attendanceFinished'
         );
 
+        localStorage.removeItem(
+            'finalAttendance'
+        );
+
+        // عرض رقم الجلسة
         sessionInfo.innerHTML =
             '<h3>Session: ' + sid + '</h3>';
 
+        // مسح QR القديم
         qrcode.innerHTML = '';
 
+        // إنشاء QR جديد
         new QRCode(
             document.getElementById('qrcode'),
 
             location.origin +
             location.pathname.replace('index.html', '') +
-            'attendance.html?session=' + sid
+            'attendance.html?session=' +
+            sid
         );
 
+        // تصفير العداد
+        attendanceCount.innerHTML =
+            'الحضور الحالي: 0';
+
+        attendanceList.innerHTML =
+            'لا يوجد حضور حتى الآن';
+
+        // رفع الطلاب للجلسة الجديدة
         await uploadStudentsToSupabase();
 
     } catch (error) {
@@ -161,6 +220,10 @@ document.getElementById('openBtn').onclick = async () => {
     }
 };
 
+
+/* =========================================================
+   جلب قائمة الحضور
+   ========================================================= */
 
 async function getAttendanceList() {
 
@@ -199,6 +262,10 @@ async function getAttendanceList() {
     return await response.json();
 }
 
+
+/* =========================================================
+   إنهاء الحضور
+   ========================================================= */
 
 async function finishAttendance() {
 
@@ -246,11 +313,14 @@ async function finishAttendance() {
                 return student;
             });
 
-        // حفظ ملف الحضور النهائي
+
+        /* حفظ ملف الحضور النهائي */
+
         localStorage.setItem(
             'finalAttendance',
             JSON.stringify(result)
         );
+
 
         const savedFinalAttendance =
             localStorage.getItem(
@@ -264,20 +334,25 @@ async function finishAttendance() {
             );
         }
 
-        // إغلاق تسجيل الطلاب لهذه الجلسة
-        const deleteResponse = await fetch(
 
-            `${SUPABASE_URL}/rest/v1/allowed_students?session_id=eq.${encodeURIComponent(currentSession)}`,
+        /* إغلاق تسجيل الطلاب */
 
-            {
-                method: 'DELETE',
+        const deleteResponse =
+            await fetch(
 
-                headers: {
-                    apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`
+                `${SUPABASE_URL}/rest/v1/allowed_students?session_id=eq.${encodeURIComponent(currentSession)}`,
+
+                {
+                    method: 'DELETE',
+
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization:
+                            `Bearer ${SUPABASE_KEY}`
+                    }
                 }
-            }
-        );
+            );
+
 
         if (!deleteResponse.ok) {
 
@@ -289,14 +364,17 @@ async function finishAttendance() {
             );
         }
 
+
         localStorage.setItem(
             'attendanceFinished',
             'true'
         );
 
+
         alert(
             'تم إنهاء الحضور وتجهيز ملف الحضور بنجاح'
         );
+
 
     } catch (error) {
 
