@@ -283,6 +283,10 @@ async function finishAttendance() {
             return;
         }
 
+        /* =====================================================
+           جلب الحضور قبل الحذف
+           ===================================================== */
+
         const attendees =
             await getAttendanceList();
 
@@ -290,6 +294,11 @@ async function finishAttendance() {
             attendees.map(
                 x => String(x.student_id)
             );
+
+
+        /* =====================================================
+           تجهيز الملف النهائي
+           ===================================================== */
 
         const result =
             rayatData.map(student => {
@@ -314,7 +323,9 @@ async function finishAttendance() {
             });
 
 
-        /* حفظ ملف الحضور النهائي */
+        /* =====================================================
+           حفظ ملف الحضور النهائي
+           ===================================================== */
 
         localStorage.setItem(
             'finalAttendance',
@@ -335,9 +346,12 @@ async function finishAttendance() {
         }
 
 
-        /* إغلاق تسجيل الطلاب */
+        /* =====================================================
+           إغلاق تسجيل الطلاب
+           حذف allowed_students
+           ===================================================== */
 
-        const deleteResponse =
+        const deleteAllowedResponse =
             await fetch(
 
                 `${SUPABASE_URL}/rest/v1/allowed_students?session_id=eq.${encodeURIComponent(currentSession)}`,
@@ -354,16 +368,55 @@ async function finishAttendance() {
             );
 
 
-        if (!deleteResponse.ok) {
+        if (!deleteAllowedResponse.ok) {
 
             const errorText =
-                await deleteResponse.text();
+                await deleteAllowedResponse.text();
 
             throw new Error(
                 `تم تجهيز الملف لكن تعذر إغلاق التسجيل: ${errorText}`
             );
         }
 
+
+        /* =====================================================
+           تنظيف attendance_temp
+           
+           بعد أن تم تجهيز finalAttendance بنجاح
+           نحذف سجلات الحضور المؤقتة للجلسة.
+           ===================================================== */
+
+        const deleteAttendanceResponse =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${encodeURIComponent(currentSession)}`,
+
+                {
+                    method: 'DELETE',
+
+                    headers: {
+                        apikey: SUPABASE_KEY,
+                        Authorization:
+                            `Bearer ${SUPABASE_KEY}`
+                    }
+                }
+            );
+
+
+        if (!deleteAttendanceResponse.ok) {
+
+            const errorText =
+                await deleteAttendanceResponse.text();
+
+            throw new Error(
+                `تم تجهيز الملف وإغلاق التسجيل، لكن تعذر تنظيف سجلات الحضور المؤقتة: ${errorText}`
+            );
+        }
+
+
+        /* =====================================================
+           تسجيل أن الحضور انتهى
+           ===================================================== */
 
         localStorage.setItem(
             'attendanceFinished',
@@ -372,7 +425,7 @@ async function finishAttendance() {
 
 
         alert(
-            'تم إنهاء الحضور وتجهيز ملف الحضور بنجاح'
+            'تم إنهاء الحضور وتجهيز ملف الحضور وتنظيف السجلات المؤقتة بنجاح'
         );
 
 
