@@ -1,21 +1,3 @@
-function excelSerialToDate(serial) {
-
-    const numericValue = Number(serial);
-
-    if (!Number.isFinite(numericValue)) {
-        return null;
-    }
-
-    return new Date(
-        Date.UTC(
-            1899,
-            11,
-            30 + numericValue
-        )
-    );
-}
-
-
 function exportAttendanceFile() {
 
     try {
@@ -60,7 +42,7 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           ترتيب أعمدة Rayat الأصلي
+           أعمدة Rayat الأصلية
            ===================================================== */
 
         const headers = [
@@ -85,7 +67,7 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تجهيز الصفوف
+           إنشاء الصفوف
            ===================================================== */
 
         const rows =
@@ -95,13 +77,13 @@ function exportAttendanceFile() {
                     student['Attendance Indicator'];
 
 
+                /* =================================================
+                   حساب Actual Hours و Absent Hours
+                   ================================================= */
+
                 let actualHours = '';
                 let absentHours = '';
 
-
-                /* =================================================
-                   الحضور
-                   ================================================= */
 
                 if (status === 'Present') {
 
@@ -111,14 +93,7 @@ function exportAttendanceFile() {
                     absentHours =
                         '00:00';
 
-                }
-
-
-                /* =================================================
-                   الغياب
-                   ================================================= */
-
-                else {
+                } else {
 
                     actualHours =
                         '00:00';
@@ -130,11 +105,17 @@ function exportAttendanceFile() {
 
                 /* =================================================
                    Meeting Days
-                   
-                   نحول Excel Serial مثل:
-                   46285
 
-                   إلى تاريخ Excel حقيقي.
+                   مهم جدًا:
+
+                   نحتفظ برقم Excel الأصلي
+                   ولكن نرسله كخلية رقمية مع
+                   تنسيق تاريخ حقيقي.
+
+                   مثال:
+                   46285
+                   سيظهر في Excel:
+                   20/09/2026
                    ================================================= */
 
                 let meetingDays =
@@ -146,12 +127,26 @@ function exportAttendanceFile() {
                     Number.isFinite(meetingDays)
                 ) {
 
+                    meetingDays = {
+
+                        v: meetingDays,
+
+                        t: 'n',
+
+                        z: 'dd/mm/yyyy'
+
+                    };
+
+                } else {
+
                     meetingDays =
-                        excelSerialToDate(
-                            meetingDays
-                        );
+                        meetingDays ?? '';
                 }
 
+
+                /* =================================================
+                   الصف النهائي
+                   ================================================= */
 
                 return [
 
@@ -169,7 +164,7 @@ function exportAttendanceFile() {
 
                     student['Confidential Indicator'] ?? '',
 
-                    meetingDays ?? '',
+                    meetingDays,
 
                     student['Expected Hours'] ?? '',
 
@@ -192,26 +187,24 @@ function exportAttendanceFile() {
 
         /* =====================================================
            إنشاء ورقة Excel
+
+           Cell objects تستخدم كما هي،
+           ولذلك Meeting Days سيحتفظ بتنسيق التاريخ.
            ===================================================== */
 
         const worksheet =
-            XLSX.utils.aoa_to_sheet([
-                headers,
-                ...rows
-            ]);
+            XLSX.utils.aoa_to_sheet(
+                [
+                    headers,
+                    ...rows
+                ]
+            );
 
 
         /* =====================================================
-           ضبط Meeting Days كتاريخ Excel حقيقي
-           
-           Banner نجح عندما كانت الخلية تاريخًا حقيقيًا
-           وتظهر بصيغة:
-           
-           13/09/2026
-           
-           لذلك نستخدم:
-           
-           dd/mm/yyyy
+           التأكد مرة أخرى من تنسيق Meeting Days
+
+           العمود H
            ===================================================== */
 
         for (
@@ -220,18 +213,23 @@ function exportAttendanceFile() {
             rowNumber++
         ) {
 
+            const cellAddress =
+                `H${rowNumber}`;
+
+
             const cell =
-                worksheet[`H${rowNumber}`];
+                worksheet[cellAddress];
 
 
             if (
                 cell &&
-                cell.v instanceof Date
+                typeof cell.v === 'number'
             ) {
 
-                cell.t = 'd';
+                cell.t = 'n';
 
-                cell.z = 'dd/mm/yyyy';
+                cell.z =
+                    'dd/mm/yyyy';
             }
         }
 
@@ -288,7 +286,7 @@ function exportAttendanceFile() {
             workbook,
             fileName,
             {
-                cellDates: true
+                cellStyles: true
             }
         );
 
