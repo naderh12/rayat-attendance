@@ -1,18 +1,3 @@
-function excelSerialToDate(serial) {
-
-    const numericValue = Number(serial);
-
-    if (!Number.isFinite(numericValue)) {
-        return serial;
-    }
-
-    return new Date(
-        Date.UTC(1899, 11, 30) +
-        numericValue * 24 * 60 * 60 * 1000
-    );
-}
-
-
 function exportAttendanceFile() {
 
     try {
@@ -82,7 +67,7 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تجهيز بيانات الحضور
+           تجهيز الصفوف
            ===================================================== */
 
         const rows =
@@ -96,44 +81,45 @@ function exportAttendanceFile() {
                 let absentHours = '';
 
 
+                /* =================================================
+                   الحضور
+                   ================================================= */
+
                 if (status === 'Present') {
 
                     actualHours =
-                        student['Expected Hours'];
+                        student['Expected Hours'] ?? '';
 
                     absentHours =
                         '00:00';
 
-                } else {
-
-                    actualHours =
-                        '00:00';
-
-                    absentHours =
-                        student['Expected Hours'];
                 }
 
 
                 /* =================================================
-                   تحويل Meeting Days
-                   من Excel Serial مثل 46285
-                   إلى تاريخ فعلي
+                   الغياب
                    ================================================= */
 
-                let meetingDays =
-                    student['Meeting Days'];
+                else {
 
+                    actualHours =
+                        '00:00';
 
-                if (
-                    typeof meetingDays === 'number' &&
-                    Number.isFinite(meetingDays)
-                ) {
-
-                    meetingDays =
-                        excelSerialToDate(
-                            meetingDays
-                        );
+                    absentHours =
+                        student['Expected Hours'] ?? '';
                 }
+
+
+                /* =================================================
+                   Meeting Days
+                   
+                   مهم جدًا:
+                   لا نحول القيمة إلى Date.
+                   نحتفظ بالقيمة الأصلية مثل 46285.
+                   ================================================= */
+
+                const meetingDays =
+                    student['Meeting Days'] ?? '';
 
 
                 return [
@@ -169,6 +155,7 @@ function exportAttendanceFile() {
                     student['Meeting ID'] ?? ''
 
                 ];
+
             });
 
 
@@ -184,7 +171,51 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           ضبط Meeting Days كتاريخ Excel حقيقي
+           تطبيق تنسيق Text (@)
+           
+           ملف Rayat المرجعي يستخدم @ على الأعمدة.
+           ===================================================== */
+
+        for (
+            let rowNumber = 1;
+            rowNumber <= rows.length + 1;
+            rowNumber++
+        ) {
+
+            for (
+                let columnNumber = 0;
+                columnNumber < headers.length;
+                columnNumber++
+            ) {
+
+                const cellAddress =
+                    XLSX.utils.encode_cell({
+                        r: rowNumber - 1,
+                        c: columnNumber
+                    });
+
+
+                const cell =
+                    worksheet[cellAddress];
+
+
+                if (cell) {
+
+                    cell.z = '@';
+                }
+            }
+        }
+
+
+        /* =====================================================
+           التأكد من أن Meeting Days يبقى رقمًا
+           
+           مثل ملف Rayat الأصلي:
+           H2 = 46278
+           H3 = 46278
+           ...
+           
+           مع تنسيق @
            ===================================================== */
 
         for (
@@ -193,19 +224,73 @@ function exportAttendanceFile() {
             rowNumber++
         ) {
 
+            const cellAddress =
+                `H${rowNumber}`;
+
+
             const cell =
-                worksheet[`H${rowNumber}`];
+                worksheet[cellAddress];
 
 
-            if (
-                cell &&
-                cell.v instanceof Date
-            ) {
+            if (cell) {
 
-                cell.t = 'd';
+                const value =
+                    attendanceData[rowNumber - 2]['Meeting Days'];
 
-                cell.z =
-                    'mm/dd/yyyy';
+
+                if (
+                    typeof value === 'number' &&
+                    Number.isFinite(value)
+                ) {
+
+                    cell.v = value;
+
+                    cell.t = 'n';
+
+                    cell.z = '@';
+                }
+            }
+        }
+
+
+        /* =====================================================
+           التأكد من Meeting ID
+           
+           أيضًا يبقى رقمًا مع تنسيق @
+           مثل ملف Rayat الأصلي.
+           ===================================================== */
+
+        for (
+            let rowNumber = 2;
+            rowNumber <= rows.length + 1;
+            rowNumber++
+        ) {
+
+            const cellAddress =
+                `O${rowNumber}`;
+
+
+            const cell =
+                worksheet[cellAddress];
+
+
+            if (cell) {
+
+                const value =
+                    attendanceData[rowNumber - 2]['Meeting ID'];
+
+
+                if (
+                    typeof value === 'number' &&
+                    Number.isFinite(value)
+                ) {
+
+                    cell.v = value;
+
+                    cell.t = 'n';
+
+                    cell.z = '@';
+                }
             }
         }
 
@@ -255,17 +340,21 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تحميل الملف
+           إنشاء ملف Excel
            ===================================================== */
 
         XLSX.writeFile(
             workbook,
             fileName,
             {
-                cellDates: true
+                cellStyles: true
             }
         );
 
+
+        /* =====================================================
+           رسالة نجاح
+           ===================================================== */
 
         alert(
             'تم إنشاء ملف رايات النهائي بنجاح'
