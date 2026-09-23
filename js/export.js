@@ -1,69 +1,152 @@
-function exportAttendanceFile(){
+function exportAttendanceFile() {
 
-const storedData =
-localStorage.getItem(
-'finalAttendance'
-);
+    try {
 
-if(!storedData){
+        /* =====================================================
+           التحقق من وجود ملف الحضور النهائي
+           ===================================================== */
 
-alert(
-'لا يوجد ملف حضور جاهز للتصدير'
-);
+        const storedData =
+            localStorage.getItem('finalAttendance');
 
-return;
+        if (!storedData) {
 
-}
+            alert(
+                'لا يوجد ملف حضور جاهز للتصدير.\n' +
+                'يرجى الضغط على "إنهاء الحضور" أولاً.'
+            );
 
-const attendanceData =
-JSON.parse(storedData);
+            return;
+        }
 
-attendanceData.forEach(student => {
 
-const status =
-student["Attendance Indicator"];
+        /* =====================================================
+           قراءة البيانات
+           ===================================================== */
 
-if(status === "Present"){
+        const attendanceData =
+            JSON.parse(storedData);
 
-student["Actual Hours"] =
-student["Expected Hours"];
 
-student["Absent Hours"] =
-"00:00";
+        if (
+            !Array.isArray(attendanceData) ||
+            attendanceData.length === 0
+        ) {
 
-}
-else{
+            alert(
+                'ملف الحضور النهائي فارغ أو غير صالح.'
+            );
 
-student["Actual Hours"] =
-"00:00";
+            return;
+        }
 
-student["Absent Hours"] =
-student["Expected Hours"];
 
-}
+        /* =====================================================
+           تجهيز ساعات الحضور والغياب
+           ===================================================== */
 
-});
+        attendanceData.forEach(student => {
 
-const worksheet =
-XLSX.utils.json_to_sheet(
-attendanceData
-);
+            const status =
+                student["Attendance Indicator"];
 
-const workbook =
-XLSX.utils.book_new();
 
-XLSX.utils.book_append_sheet(
-workbook,
-worksheet,
-"Attendance"
-);
+            if (status === "Present") {
 
-const crn =
-attendanceData[0]["CRN"] || "Attendance";
+                student["Actual Hours"] =
+                    student["Expected Hours"];
 
-XLSX.writeFile(
-workbook,
-`Attendance_${crn}.xlsx`
-);
+                student["Absent Hours"] =
+                    "00:00";
 
+            } else {
+
+                student["Actual Hours"] =
+                    "00:00";
+
+                student["Absent Hours"] =
+                    student["Expected Hours"];
+            }
+        });
+
+
+        /* =====================================================
+           إنشاء ورقة Excel
+           ===================================================== */
+
+        const worksheet =
+            XLSX.utils.json_to_sheet(
+                attendanceData
+            );
+
+
+        /* =====================================================
+           إنشاء ملف Excel
+           ===================================================== */
+
+        const workbook =
+            XLSX.utils.book_new();
+
+
+        XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Attendance"
+        );
+
+
+        /* =====================================================
+           الحصول على CRN
+           ===================================================== */
+
+        let crn =
+            attendanceData[0]["CRN"];
+
+
+        if (!crn) {
+            crn = "Attendance";
+        }
+
+
+        /* =====================================================
+           تنظيف اسم الملف من الرموز غير المسموح بها
+           ===================================================== */
+
+        crn = String(crn).replace(
+            /[\\/:*?"<>|]/g,
+            "_"
+        );
+
+
+        const fileName =
+            `Attendance_${crn}.xlsx`;
+
+
+        /* =====================================================
+           تحميل ملف Excel
+           ===================================================== */
+
+        XLSX.writeFile(
+            workbook,
+            fileName
+        );
+
+
+        alert(
+            'تم إنشاء ملف رايات النهائي بنجاح'
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            'Export Error:',
+            error
+        );
+
+        alert(
+            'حدث خطأ أثناء تحميل ملف رايات النهائي.\n\n' +
+            error.message
+        );
+    }
 }
