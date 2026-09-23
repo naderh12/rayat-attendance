@@ -3,7 +3,7 @@ function exportAttendanceFile() {
     try {
 
         /* =====================================================
-           التحقق من وجود ملف الحضور النهائي
+           قراءة ملف الحضور النهائي
            ===================================================== */
 
         const storedData =
@@ -19,10 +19,6 @@ function exportAttendanceFile() {
             return;
         }
 
-
-        /* =====================================================
-           قراءة البيانات
-           ===================================================== */
 
         const attendanceData =
             JSON.parse(storedData);
@@ -42,7 +38,7 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           أعمدة Rayat الأصلية
+           ترتيب أعمدة Rayat الأصلي
            ===================================================== */
 
         const headers = [
@@ -77,10 +73,6 @@ function exportAttendanceFile() {
                     student['Attendance Indicator'];
 
 
-                /* =================================================
-                   حساب Actual Hours و Absent Hours
-                   ================================================= */
-
                 let actualHours = '';
                 let absentHours = '';
 
@@ -103,50 +95,26 @@ function exportAttendanceFile() {
                 }
 
 
-                /* =================================================
-                   Meeting Days
+                /*
+                   مهم:
 
-                   مهم جدًا:
-
-                   نحتفظ برقم Excel الأصلي
-                   ولكن نرسله كخلية رقمية مع
-                   تنسيق تاريخ حقيقي.
-
-                   مثال:
-                   46285
-                   سيظهر في Excel:
-                   20/09/2026
-                   ================================================= */
+                   هنا نضع Meeting Days كرقم فقط.
+                   وبعد إنشاء الورقة سنفرض تنسيق
+                   التاريخ على خلايا H بشكل مباشر.
+                */
 
                 let meetingDays =
                     student['Meeting Days'];
 
-
                 if (
-                    typeof meetingDays === 'number' &&
-                    Number.isFinite(meetingDays)
+                    typeof meetingDays !== 'number' ||
+                    !Number.isFinite(meetingDays)
                 ) {
 
-                    meetingDays = {
+                    meetingDays = '';
 
-                        v: meetingDays,
-
-                        t: 'n',
-
-                        z: 'dd/mm/yyyy'
-
-                    };
-
-                } else {
-
-                    meetingDays =
-                        meetingDays ?? '';
                 }
 
-
-                /* =================================================
-                   الصف النهائي
-                   ================================================= */
 
                 return [
 
@@ -187,9 +155,6 @@ function exportAttendanceFile() {
 
         /* =====================================================
            إنشاء ورقة Excel
-
-           Cell objects تستخدم كما هي،
-           ولذلك Meeting Days سيحتفظ بتنسيق التاريخ.
            ===================================================== */
 
         const worksheet =
@@ -202,9 +167,16 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           التأكد مرة أخرى من تنسيق Meeting Days
+           إصلاح Meeting Days
+           =====================================================
 
-           العمود H
+           العمود H هو Meeting Days.
+
+           نضع:
+           - القيمة الرقمية الأصلية
+           - تنسيق تاريخ Excel
+           - نحذف w حتى لا يحتفظ SheetJS
+             بالتنسيق القديم.
            ===================================================== */
 
         for (
@@ -216,20 +188,41 @@ function exportAttendanceFile() {
             const cellAddress =
                 `H${rowNumber}`;
 
-
             const cell =
                 worksheet[cellAddress];
 
 
             if (
                 cell &&
-                typeof cell.v === 'number'
+                typeof cell.v === 'number' &&
+                Number.isFinite(cell.v)
             ) {
+
+                /* القيمة تبقى رقم Excel */
 
                 cell.t = 'n';
 
+
+                /* تنسيق التاريخ */
+
                 cell.z =
                     'dd/mm/yyyy';
+
+
+                /*
+                   مهم جدًا:
+                   حذف النص المنسق القديم
+                */
+
+                delete cell.w;
+
+
+                /*
+                   إزالة أي Style قديم
+                   حتى لا يعيد تنسيق @
+                */
+
+                delete cell.s;
             }
         }
 
@@ -250,7 +243,7 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           الحصول على CRN
+           اسم الملف
            ===================================================== */
 
         let crn =
@@ -262,10 +255,6 @@ function exportAttendanceFile() {
             crn = 'Attendance';
         }
 
-
-        /* =====================================================
-           تنظيف اسم الملف
-           ===================================================== */
 
         crn =
             String(crn).replace(
@@ -279,15 +268,18 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           كتابة ملف Excel
+           تصدير Excel
+           =====================================================
+
+           ملاحظة مهمة:
+           لا نستخدم cellStyles هنا.
+           تنسيق z هو الذي يجب أن يحمل
+           تنسيق التاريخ.
            ===================================================== */
 
         XLSX.writeFile(
             workbook,
-            fileName,
-            {
-                cellStyles: true
-            }
+            fileName
         );
 
 
