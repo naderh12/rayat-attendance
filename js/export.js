@@ -1,3 +1,21 @@
+function excelSerialToDate(serial) {
+
+    const numericValue = Number(serial);
+
+    if (!Number.isFinite(numericValue)) {
+        return null;
+    }
+
+    return new Date(
+        Date.UTC(
+            1899,
+            11,
+            30 + numericValue
+        )
+    );
+}
+
+
 function exportAttendanceFile() {
 
     try {
@@ -113,13 +131,26 @@ function exportAttendanceFile() {
                 /* =================================================
                    Meeting Days
                    
-                   مهم جدًا:
-                   لا نحول القيمة إلى Date.
-                   نحتفظ بالقيمة الأصلية مثل 46285.
+                   نحول Excel Serial مثل:
+                   46285
+
+                   إلى تاريخ Excel حقيقي.
                    ================================================= */
 
-                const meetingDays =
-                    student['Meeting Days'] ?? '';
+                let meetingDays =
+                    student['Meeting Days'];
+
+
+                if (
+                    typeof meetingDays === 'number' &&
+                    Number.isFinite(meetingDays)
+                ) {
+
+                    meetingDays =
+                        excelSerialToDate(
+                            meetingDays
+                        );
+                }
 
 
                 return [
@@ -138,7 +169,7 @@ function exportAttendanceFile() {
 
                     student['Confidential Indicator'] ?? '',
 
-                    meetingDays,
+                    meetingDays ?? '',
 
                     student['Expected Hours'] ?? '',
 
@@ -171,132 +202,42 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تطبيق تنسيق Text (@)
+           ضبط Meeting Days كتاريخ Excel حقيقي
            
-           ملف Rayat المرجعي يستخدم @ على الأعمدة.
+           Banner نجح عندما كانت الخلية تاريخًا حقيقيًا
+           وتظهر بصيغة:
+           
+           13/09/2026
+           
+           لذلك نستخدم:
+           
+           dd/mm/yyyy
            ===================================================== */
 
         for (
-            let rowNumber = 1;
+            let rowNumber = 2;
             rowNumber <= rows.length + 1;
             rowNumber++
         ) {
 
-            for (
-                let columnNumber = 0;
-                columnNumber < headers.length;
-                columnNumber++
+            const cell =
+                worksheet[`H${rowNumber}`];
+
+
+            if (
+                cell &&
+                cell.v instanceof Date
             ) {
 
-                const cellAddress =
-                    XLSX.utils.encode_cell({
-                        r: rowNumber - 1,
-                        c: columnNumber
-                    });
+                cell.t = 'd';
 
-
-                const cell =
-                    worksheet[cellAddress];
-
-
-                if (cell) {
-
-                    cell.z = '@';
-                }
+                cell.z = 'dd/mm/yyyy';
             }
         }
 
 
         /* =====================================================
-           التأكد من أن Meeting Days يبقى رقمًا
-           
-           مثل ملف Rayat الأصلي:
-           H2 = 46278
-           H3 = 46278
-           ...
-           
-           مع تنسيق @
-           ===================================================== */
-
-        for (
-            let rowNumber = 2;
-            rowNumber <= rows.length + 1;
-            rowNumber++
-        ) {
-
-            const cellAddress =
-                `H${rowNumber}`;
-
-
-            const cell =
-                worksheet[cellAddress];
-
-
-            if (cell) {
-
-                const value =
-                    attendanceData[rowNumber - 2]['Meeting Days'];
-
-
-                if (
-                    typeof value === 'number' &&
-                    Number.isFinite(value)
-                ) {
-
-                    cell.v = value;
-
-                    cell.t = 'n';
-
-                    cell.z = '@';
-                }
-            }
-        }
-
-
-        /* =====================================================
-           التأكد من Meeting ID
-           
-           أيضًا يبقى رقمًا مع تنسيق @
-           مثل ملف Rayat الأصلي.
-           ===================================================== */
-
-        for (
-            let rowNumber = 2;
-            rowNumber <= rows.length + 1;
-            rowNumber++
-        ) {
-
-            const cellAddress =
-                `O${rowNumber}`;
-
-
-            const cell =
-                worksheet[cellAddress];
-
-
-            if (cell) {
-
-                const value =
-                    attendanceData[rowNumber - 2]['Meeting ID'];
-
-
-                if (
-                    typeof value === 'number' &&
-                    Number.isFinite(value)
-                ) {
-
-                    cell.v = value;
-
-                    cell.t = 'n';
-
-                    cell.z = '@';
-                }
-            }
-        }
-
-
-        /* =====================================================
-           إنشاء ملف Excel
+           إنشاء Workbook
            ===================================================== */
 
         const workbook =
@@ -340,14 +281,14 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           إنشاء ملف Excel
+           كتابة ملف Excel
            ===================================================== */
 
         XLSX.writeFile(
             workbook,
             fileName,
             {
-                cellStyles: true
+                cellDates: true
             }
         );
 
