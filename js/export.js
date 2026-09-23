@@ -1,3 +1,18 @@
+function excelSerialToDate(serial) {
+
+    const numericValue = Number(serial);
+
+    if (!Number.isFinite(numericValue)) {
+        return serial;
+    }
+
+    return new Date(
+        Date.UTC(1899, 11, 30) +
+        numericValue * 24 * 60 * 60 * 1000
+    );
+}
+
+
 function exportAttendanceFile() {
 
     try {
@@ -42,32 +57,119 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تجهيز ساعات الحضور والغياب
+           ترتيب أعمدة Rayat الأصلي
            ===================================================== */
 
-        attendanceData.forEach(student => {
+        const headers = [
 
-            const status =
-                student["Attendance Indicator"];
+            'Term Code',
+            'CRN',
+            'Session Indicator',
+            'Start Time',
+            'Student ID',
+            'Student Name',
+            'Confidential Indicator',
+            'Meeting Days',
+            'Expected Hours',
+            'Actual Hours',
+            'Absent Hours',
+            'Attendance Indicator',
+            'Authorised Absence',
+            'Comments',
+            'Meeting ID'
+
+        ];
 
 
-            if (status === "Present") {
+        /* =====================================================
+           تجهيز بيانات الحضور
+           ===================================================== */
 
-                student["Actual Hours"] =
-                    student["Expected Hours"];
+        const rows =
+            attendanceData.map(student => {
 
-                student["Absent Hours"] =
-                    "00:00";
+                const status =
+                    student['Attendance Indicator'];
 
-            } else {
 
-                student["Actual Hours"] =
-                    "00:00";
+                let actualHours = '';
+                let absentHours = '';
 
-                student["Absent Hours"] =
-                    student["Expected Hours"];
-            }
-        });
+
+                if (status === 'Present') {
+
+                    actualHours =
+                        student['Expected Hours'];
+
+                    absentHours =
+                        '00:00';
+
+                } else {
+
+                    actualHours =
+                        '00:00';
+
+                    absentHours =
+                        student['Expected Hours'];
+                }
+
+
+                /* =================================================
+                   تحويل Meeting Days
+                   من Excel Serial مثل 46285
+                   إلى تاريخ فعلي
+                   ================================================= */
+
+                let meetingDays =
+                    student['Meeting Days'];
+
+
+                if (
+                    typeof meetingDays === 'number' &&
+                    Number.isFinite(meetingDays)
+                ) {
+
+                    meetingDays =
+                        excelSerialToDate(
+                            meetingDays
+                        );
+                }
+
+
+                return [
+
+                    student['Term Code'] ?? '',
+
+                    student['CRN'] ?? '',
+
+                    student['Session Indicator'] ?? '',
+
+                    student['Start Time'] ?? '',
+
+                    student['Student ID'] ?? '',
+
+                    student['Student Name'] ?? '',
+
+                    student['Confidential Indicator'] ?? '',
+
+                    meetingDays,
+
+                    student['Expected Hours'] ?? '',
+
+                    actualHours,
+
+                    absentHours,
+
+                    status ?? '',
+
+                    student['Authorised Absence'] ?? '',
+
+                    student['Comments'] ?? '',
+
+                    student['Meeting ID'] ?? ''
+
+                ];
+            });
 
 
         /* =====================================================
@@ -75,9 +177,37 @@ function exportAttendanceFile() {
            ===================================================== */
 
         const worksheet =
-            XLSX.utils.json_to_sheet(
-                attendanceData
-            );
+            XLSX.utils.aoa_to_sheet([
+                headers,
+                ...rows
+            ]);
+
+
+        /* =====================================================
+           ضبط Meeting Days كتاريخ Excel حقيقي
+           ===================================================== */
+
+        for (
+            let rowNumber = 2;
+            rowNumber <= rows.length + 1;
+            rowNumber++
+        ) {
+
+            const cell =
+                worksheet[`H${rowNumber}`];
+
+
+            if (
+                cell &&
+                cell.v instanceof Date
+            ) {
+
+                cell.t = 'd';
+
+                cell.z =
+                    'mm/dd/yyyy';
+            }
+        }
 
 
         /* =====================================================
@@ -91,7 +221,7 @@ function exportAttendanceFile() {
         XLSX.utils.book_append_sheet(
             workbook,
             worksheet,
-            "Attendance"
+            'Exported Data'
         );
 
 
@@ -100,22 +230,24 @@ function exportAttendanceFile() {
            ===================================================== */
 
         let crn =
-            attendanceData[0]["CRN"];
+            attendanceData[0]['CRN'];
 
 
         if (!crn) {
-            crn = "Attendance";
+
+            crn = 'Attendance';
         }
 
 
         /* =====================================================
-           تنظيف اسم الملف من الرموز غير المسموح بها
+           تنظيف اسم الملف
            ===================================================== */
 
-        crn = String(crn).replace(
-            /[\\/:*?"<>|]/g,
-            "_"
-        );
+        crn =
+            String(crn).replace(
+                /[\\/:*?"<>|]/g,
+                '_'
+            );
 
 
         const fileName =
@@ -123,12 +255,15 @@ function exportAttendanceFile() {
 
 
         /* =====================================================
-           تحميل ملف Excel
+           تحميل الملف
            ===================================================== */
 
         XLSX.writeFile(
             workbook,
-            fileName
+            fileName,
+            {
+                cellDates: true
+            }
         );
 
 
