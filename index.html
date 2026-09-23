@@ -1,46 +1,1447 @@
-<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحضير رايات</title><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script><style>body{font-family:Tahoma;background:#f5f5f5;padding:20px}.card{background:#fff;padding:20px;border-radius:12px;max-width:1000px;margin:auto}button{margin:4px;padding:8px 16px}.footer{margin-top:20px;background:#f1f1f1;padding:10px;border-radius:8px}</style></head><body><div class="card"><h1>تحضير رايات</h1><input type="file" id="excelFile"><div id="fileInfo">قم باختيار ملف رايات</div><button id="openBtn">فتح الحضور</button><button onclick="finishAttendance()">إنهاء الحضور</button><button onclick="exportAttendanceFile()">تحميل ملف رايات النهائي</button><div id="sessionInfo"></div><div id="qrcode"></div><div id="attendanceCount">الحضور الحالي: 0</div><div id="attendanceList"></div><div class="footer">© 2026<br>نادر الوسيدي<br>📧 للتواصل والاقتراحات والتطوير<br>📱 Telegram: @naderh12</div></div><script>const SUPABASE_URL='https://paimizculszksstmcfsq.supabase.co';const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhaW1pemN1bHN6a3NzdG1jZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MDk4NTYsImV4cCI6MjEwNTM4NTg1Nn0.9MlGrXKL745jPWygSuOSWVh-eLX-sR565zHYDRuufK0';</script><script src="js/app.js"></script><script src="js/export.js"></script><script>
-async function loadAttendance(){
-    try{
-        const currentSession = localStorage.getItem('sessionId');
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 
-        if(!currentSession){
-            document.getElementById('attendanceCount').innerHTML = 'الحضور الحالي: 0';
-            document.getElementById('attendanceList').innerHTML = 'لا يوجد حضور حتى الآن';
-            return;
-        }
+<head>
 
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${encodeURIComponent(currentSession)}`,
-            {
-                headers:{
-                    apikey: SUPABASE_KEY,
-                    Authorization: `Bearer ${SUPABASE_KEY}`
-                }
-            }
-        );
+<meta charset="UTF-8">
 
-        if(!response.ok){
-            throw new Error('Failed to load attendance');
-        }
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
-        const data = await response.json();
+<title>
+نظام مساعد تحضير الحضور الإلكتروني
+</title>
 
-        document.getElementById('attendanceCount').innerHTML =
-            `الحضور الحالي: ${Array.isArray(data) ? data.length : 0}`;
 
-        if(!Array.isArray(data) || data.length === 0){
-            document.getElementById('attendanceList').innerHTML =
-                'لا يوجد حضور حتى الآن';
-            return;
-        }
+<!-- =====================================================
+     مكتبات المشروع الحالية
+     ===================================================== -->
 
-        document.getElementById('attendanceList').innerHTML =
-            data.map(item => `<div class="student">${item.student_id}</div>`).join('');
-    }catch(error){
-        console.error(error);
-    }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+
+<!-- =====================================================
+     التصميم
+     ===================================================== -->
+
+<style>
+
+:root {
+
+    --tvtc-blue: #5b8fa8;
+
+    --tvtc-blue-dark: #3f7188;
+
+    --tvtc-teal: #40bcc4;
+
+    --tvtc-green: #a3d99c;
+
+    --dark: #343131;
+
+    --text: #303030;
+
+    --muted: #6f767a;
+
+    --background: #f4f7f8;
+
+    --white: #ffffff;
+
+    --border: #e2e8eb;
+
+    --success: #4f9b68;
+
 }
 
-setInterval(loadAttendance, 3000);
+
+/* =====================================================
+   الصفحة
+   ===================================================== */
+
+* {
+
+    box-sizing: border-box;
+
+}
+
+
+body {
+
+    margin: 0;
+
+    min-height: 100vh;
+
+    font-family:
+        Tahoma,
+        Arial,
+        sans-serif;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f5f8f9 0%,
+            #eef5f6 50%,
+            #f7faf9 100%
+        );
+
+    color: var(--text);
+
+}
+
+
+/* =====================================================
+   الشريط العلوي
+   ===================================================== */
+
+.top-bar {
+
+    height: 8px;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--tvtc-blue),
+            var(--tvtc-teal),
+            var(--tvtc-green)
+        );
+
+}
+
+
+/* =====================================================
+   الحاوية الرئيسية
+   ===================================================== */
+
+.container {
+
+    width: min(
+        1100px,
+        calc(100% - 30px)
+    );
+
+    margin: 35px auto 45px;
+
+}
+
+
+/* =====================================================
+   رأس الصفحة
+   ===================================================== */
+
+.header {
+
+    background: var(--white);
+
+    border-radius: 24px;
+
+    padding: 30px;
+
+    box-shadow:
+        0 12px 35px rgba(
+            52,
+            49,
+            49,
+            0.08
+        );
+
+    border: 1px solid var(--border);
+
+    text-align: center;
+
+    position: relative;
+
+    overflow: hidden;
+
+}
+
+
+.header::before {
+
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+
+    right: 0;
+
+    width: 100%;
+
+    height: 5px;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--tvtc-blue),
+            var(--tvtc-teal),
+            var(--tvtc-green)
+        );
+
+}
+
+
+/* =====================================================
+   منطقة الهوية
+   ===================================================== */
+
+.brand-mark {
+
+    width: 82px;
+
+    height: 82px;
+
+    margin: 0 auto 15px;
+
+    border-radius: 50%;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--tvtc-blue),
+            var(--tvtc-teal)
+        );
+
+    box-shadow:
+        0 8px 20px rgba(
+            64,
+            188,
+            196,
+            0.25
+        );
+
+}
+
+
+.brand-mark span {
+
+    color: white;
+
+    font-size: 22px;
+
+    font-weight: bold;
+
+    letter-spacing: 1px;
+
+}
+
+
+.header h1 {
+
+    margin: 5px 0 10px;
+
+    color: var(--dark);
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+}
+
+
+.header .subtitle {
+
+    margin: 0 auto;
+
+    color: var(--muted);
+
+    font-size: 15px;
+
+    line-height: 1.8;
+
+    max-width: 700px;
+
+}
+
+
+/* =====================================================
+   بطاقات المحتوى
+   ===================================================== */
+
+.main-card {
+
+    background: var(--white);
+
+    margin-top: 22px;
+
+    border-radius: 22px;
+
+    padding: 28px;
+
+    border: 1px solid var(--border);
+
+    box-shadow:
+        0 10px 30px rgba(
+            52,
+            49,
+            49,
+            0.06
+        );
+
+}
+
+
+/* =====================================================
+   عنوان القسم
+   ===================================================== */
+
+.section-title {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-bottom: 20px;
+
+}
+
+
+.section-title .icon {
+
+    width: 38px;
+
+    height: 38px;
+
+    border-radius: 10px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background:
+        rgba(
+            64,
+            188,
+            196,
+            0.12
+        );
+
+    color: var(--tvtc-blue-dark);
+
+    font-size: 18px;
+
+}
+
+
+.section-title h2 {
+
+    margin: 0;
+
+    font-size: 20px;
+
+    color: var(--dark);
+
+}
+
+
+/* =====================================================
+   رفع الملف
+   ===================================================== */
+
+.upload-area {
+
+    border: 2px dashed #b9d2dc;
+
+    border-radius: 18px;
+
+    padding: 28px 20px;
+
+    text-align: center;
+
+    background:
+        linear-gradient(
+            180deg,
+            #fbfdfe,
+            #f6fafb
+        );
+
+    transition: 0.2s ease;
+
+}
+
+
+.upload-area:hover {
+
+    border-color: var(--tvtc-teal);
+
+    background: #f4fbfb;
+
+}
+
+
+.upload-icon {
+
+    font-size: 38px;
+
+    margin-bottom: 8px;
+
+}
+
+
+.upload-title {
+
+    font-size: 17px;
+
+    font-weight: bold;
+
+    color: var(--dark);
+
+    margin-bottom: 5px;
+
+}
+
+
+.upload-description {
+
+    color: var(--muted);
+
+    font-size: 13px;
+
+    margin-bottom: 18px;
+
+}
+
+
+/* =====================================================
+   input file
+   ===================================================== */
+
+#excelFile {
+
+    width: 100%;
+
+    max-width: 500px;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+
+    border-radius: 12px;
+
+    background: white;
+
+    cursor: pointer;
+
+}
+
+
+/* =====================================================
+   معلومات الملف
+   ===================================================== */
+
+#fileInfo {
+
+    margin-top: 18px;
+
+    padding: 15px;
+
+    border-radius: 14px;
+
+    background: #f5f8f9;
+
+    border-right: 4px solid var(--tvtc-teal);
+
+    color: var(--text);
+
+    line-height: 2;
+
+    font-size: 14px;
+
+}
+
+
+/* =====================================================
+   الأزرار
+   ===================================================== */
+
+.actions {
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(
+            3,
+            1fr
+        );
+
+    gap: 12px;
+
+    margin-top: 22px;
+
+}
+
+
+button {
+
+    border: none;
+
+    border-radius: 13px;
+
+    padding: 14px 18px;
+
+    font-family: inherit;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    transition:
+        transform 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+
+}
+
+
+button:hover {
+
+    transform: translateY(-2px);
+
+}
+
+
+button:active {
+
+    transform: translateY(0);
+
+}
+
+
+#openBtn {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--tvtc-blue),
+            var(--tvtc-blue-dark)
+        );
+
+    box-shadow:
+        0 6px 16px rgba(
+            63,
+            113,
+            136,
+            0.22
+        );
+
+}
+
+
+.finish-btn {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            #555050,
+            #343131
+        );
+
+}
+
+
+.export-btn {
+
+    color: white;
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--tvtc-teal),
+            #36a7ae
+        );
+
+    box-shadow:
+        0 6px 16px rgba(
+            64,
+            188,
+            196,
+            0.18
+        );
+
+}
+
+
+/* =====================================================
+   معلومات الجلسة
+   ===================================================== */
+
+#sessionInfo {
+
+    margin-top: 25px;
+
+}
+
+
+#sessionInfo h3 {
+
+    margin: 0;
+
+    padding: 14px 18px;
+
+    border-radius: 13px;
+
+    background:
+        rgba(
+            163,
+            217,
+            156,
+            0.18
+        );
+
+    color: #477548;
+
+    font-size: 15px;
+
+    border-right: 4px solid var(--tvtc-green);
+
+}
+
+
+/* =====================================================
+   منطقة الحضور
+   ===================================================== */
+
+.attendance-panel {
+
+    margin-top: 22px;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(
+            280px,
+            380px
+        )
+        1fr;
+
+    gap: 20px;
+
+    align-items: stretch;
+
+}
+
+
+/* =====================================================
+   QR
+   ===================================================== */
+
+.qr-card {
+
+    background: #fbfdfe;
+
+    border: 1px solid var(--border);
+
+    border-radius: 20px;
+
+    padding: 22px;
+
+    text-align: center;
+
+}
+
+
+.qr-title {
+
+    font-size: 17px;
+
+    font-weight: bold;
+
+    margin-bottom: 15px;
+
+    color: var(--dark);
+
+}
+
+
+#qrcode {
+
+    width: 260px;
+
+    min-height: 260px;
+
+    max-width: 100%;
+
+    margin: 0 auto;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: white;
+
+    border-radius: 15px;
+
+    padding: 12px;
+
+    border: 1px solid var(--border);
+
+}
+
+
+.qr-note {
+
+    margin-top: 14px;
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+    line-height: 1.7;
+
+}
+
+
+/* =====================================================
+   قائمة الحضور
+   ===================================================== */
+
+.attendance-card {
+
+    background: #fbfdfe;
+
+    border: 1px solid var(--border);
+
+    border-radius: 20px;
+
+    padding: 22px;
+
+}
+
+
+#attendanceCount {
+
+    display: inline-block;
+
+    padding: 10px 16px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(
+            64,
+            188,
+            196,
+            0.12
+        );
+
+    color: var(--tvtc-blue-dark);
+
+    font-weight: bold;
+
+    font-size: 16px;
+
+    margin-bottom: 15px;
+
+}
+
+
+#attendanceList {
+
+    min-height: 120px;
+
+    max-height: 360px;
+
+    overflow-y: auto;
+
+    padding: 12px;
+
+    border-radius: 14px;
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    color: var(--muted);
+
+    line-height: 2;
+
+    font-size: 14px;
+
+}
+
+
+/* =====================================================
+   التوقيع
+   ===================================================== */
+
+.footer {
+
+    margin-top: 25px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #343131,
+            #464343
+        );
+
+    color: white;
+
+    border-radius: 22px;
+
+    padding: 25px;
+
+    text-align: center;
+
+    box-shadow:
+        0 10px 28px rgba(
+            52,
+            49,
+            49,
+            0.12
+        );
+
+}
+
+
+.footer-label {
+
+    color: #b9c0c3;
+
+    font-size: 12px;
+
+    margin-bottom: 7px;
+
+}
+
+
+.footer-name {
+
+    font-size: 20px;
+
+    font-weight: bold;
+
+    margin-bottom: 6px;
+
+}
+
+
+.footer-role {
+
+    color: #d5dadd;
+
+    font-size: 12px;
+
+    margin-bottom: 13px;
+
+}
+
+
+.footer-email {
+
+    color: #8dd9dc;
+
+    text-decoration: none;
+
+    font-size: 13px;
+
+    direction: ltr;
+
+    display: inline-block;
+
+}
+
+
+.footer-email:hover {
+
+    text-decoration: underline;
+
+}
+
+
+.footer-copy {
+
+    margin-top: 16px;
+
+    color: #9ea4a7;
+
+    font-size: 11px;
+
+}
+
+
+/* =====================================================
+   شريط الحالة
+   ===================================================== */
+
+.status-note {
+
+    margin-top: 14px;
+
+    text-align: center;
+
+    color: var(--muted);
+
+    font-size: 12px;
+
+}
+
+
+/* =====================================================
+   الجوال
+   ===================================================== */
+
+@media (max-width: 800px) {
+
+    .container {
+
+        width:
+            calc(
+                100% - 18px
+            );
+
+        margin-top: 18px;
+
+    }
+
+
+    .header {
+
+        padding: 24px 18px;
+
+        border-radius: 18px;
+
+    }
+
+
+    .header h1 {
+
+        font-size: 23px;
+
+    }
+
+
+    .main-card {
+
+        padding: 18px;
+
+        border-radius: 18px;
+
+    }
+
+
+    .actions {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    .attendance-panel {
+
+        grid-template-columns:
+            1fr;
+
+    }
+
+
+    #qrcode {
+
+        width: 240px;
+
+        min-height: 240px;
+
+    }
+
+}
+
+
+@media (max-width: 430px) {
+
+    .upload-area {
+
+        padding: 20px 12px;
+
+    }
+
+
+    .brand-mark {
+
+        width: 70px;
+
+        height: 70px;
+
+    }
+
+
+    .header h1 {
+
+        font-size: 21px;
+
+    }
+
+
+    .section-title h2 {
+
+        font-size: 17px;
+
+    }
+
+
+    .footer-name {
+
+        font-size: 18px;
+
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="top-bar"></div>
+
+
+<div class="container">
+
+
+    <!-- =================================================
+         رأس النظام
+         ================================================= -->
+
+    <header class="header">
+
+        <div class="brand-mark">
+
+            <span>TVTC</span>
+
+        </div>
+
+
+        <h1>
+            نظام مساعد تحضير الحضور الإلكتروني
+        </h1>
+
+
+        <p class="subtitle">
+
+            مساعد إلكتروني لتسجيل حضور المتدربين
+            باستخدام رمز QR وتجهيز بيانات الحضور
+            للاستيراد في نظام Banner.
+
+        </p>
+
+    </header>
+
+
+
+    <!-- =================================================
+         البطاقة الرئيسية
+         ================================================= -->
+
+    <main class="main-card">
+
+
+        <!-- =============================================
+             رفع الملف
+             ============================================= -->
+
+        <div class="section-title">
+
+            <div class="icon">
+                📁
+            </div>
+
+            <h2>
+                إعداد جلسة الحضور
+            </h2>
+
+        </div>
+
+
+        <div class="upload-area">
+
+            <div class="upload-icon">
+                📊
+            </div>
+
+
+            <div class="upload-title">
+
+                رفع ملف Rayat
+
+            </div>
+
+
+            <div class="upload-description">
+
+                اختر ملف Excel الخاص بالحضور
+                لبدء إعداد جلسة جديدة.
+
+            </div>
+
+
+            <input
+                type="file"
+                id="excelFile"
+                accept=".xlsx,.xls"
+            >
+
+
+            <div id="fileInfo">
+
+                قم باختيار ملف Rayat
+
+            </div>
+
+        </div>
+
+
+
+        <!-- =============================================
+             الأزرار
+             ============================================= -->
+
+        <div class="actions">
+
+            <button
+                id="openBtn"
+            >
+                فتح الحضور
+            </button>
+
+
+            <button
+                class="finish-btn"
+                onclick="finishAttendance()"
+            >
+                إنهاء الحضور
+            </button>
+
+
+            <button
+                class="export-btn"
+                onclick="exportAttendanceFile()"
+            >
+                تحميل ملف الحضور النهائي
+            </button>
+
+        </div>
+
+
+
+        <!-- =============================================
+             معلومات الجلسة
+             ============================================= -->
+
+        <div id="sessionInfo"></div>
+
+
+
+        <!-- =============================================
+             منطقة الحضور
+             ============================================= -->
+
+        <div class="attendance-panel">
+
+
+            <!-- =========================================
+                 QR
+                 ========================================= -->
+
+            <section class="qr-card">
+
+                <div class="qr-title">
+
+                    رمز QR للحضور
+
+                </div>
+
+
+                <div id="qrcode"></div>
+
+
+                <div class="qr-note">
+
+                    وجّه كاميرا الهاتف إلى رمز QR
+                    لفتح صفحة تسجيل الحضور.
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =========================================
+                 الحضور
+                 ========================================= -->
+
+            <section class="attendance-card">
+
+                <div class="section-title">
+
+                    <div class="icon">
+                        ✓
+                    </div>
+
+                    <h2>
+                        متابعة الحضور
+                    </h2>
+
+                </div>
+
+
+                <div id="attendanceCount">
+
+                    الحضور الحالي: 0
+
+                </div>
+
+
+                <div id="attendanceList">
+
+                    لا يوجد حضور حتى الآن
+
+                </div>
+
+
+                <div class="status-note">
+
+                    يتم تحديث بيانات الحضور
+                    تلقائيًا أثناء الجلسة.
+
+                </div>
+
+            </section>
+
+
+        </div>
+
+    </main>
+
+
+
+    <!-- =================================================
+         التوقيع
+         ================================================= -->
+
+    <footer class="footer">
+
+        <div class="footer-label">
+
+            إعداد وتطوير
+
+        </div>
+
+
+        <div class="footer-name">
+
+            نادر هلال الوسيدي
+
+        </div>
+
+
+        <div class="footer-role">
+
+            نظام مساعد تحضير الحضور الإلكتروني
+
+        </div>
+
+
+        <a
+            class="footer-email"
+            href="mailto:nalharbi12@tvtc.gov.sa"
+        >
+
+            ✉ nalharbi12@tvtc.gov.sa
+
+        </a>
+
+
+        <div class="footer-copy">
+
+            © 2026 — جميع الحقوق محفوظة
+
+        </div>
+
+    </footer>
+
+
+</div>
+
+
+
+<!-- =====================================================
+     Supabase
+     ===================================================== -->
+
+<script>
+
+const SUPABASE_URL =
+'https://paimizculszksstmcfsq.supabase.co';
+
+
+const SUPABASE_KEY =
+'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhaW1pemN1bHN6a3NzdG1jZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MDk4NTYsImV4cCI6MjEwNTM4NTg1Nn0.9MlGrXKL745jPWygSuOSWVh-eLX-sR565zHYDRuufK0';
+
+</script>
+
+
+
+<!-- =====================================================
+     ملفات المشروع
+     ===================================================== -->
+
+<script src="js/app.js"></script>
+
+<script src="js/export.js"></script>
+
+
+
+<!-- =====================================================
+     تحديث الحضور المباشر
+     ===================================================== -->
+
+<script>
+
+async function loadAttendance() {
+
+    try {
+
+        const currentSession =
+            localStorage.getItem('sessionId');
+
+
+        if (!currentSession) {
+
+            document.getElementById(
+                'attendanceCount'
+            ).innerHTML =
+                'الحضور الحالي: 0';
+
+
+            document.getElementById(
+                'attendanceList'
+            ).innerHTML =
+                'لا يوجد حضور حتى الآن';
+
+
+            return;
+
+        }
+
+
+        const response =
+            await fetch(
+
+                `${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${encodeURIComponent(currentSession)}`,
+
+                {
+
+                    headers: {
+
+                        apikey:
+                            SUPABASE_KEY,
+
+                        Authorization:
+                            `Bearer ${SUPABASE_KEY}`
+
+                    }
+
+                }
+
+            );
+
+
+        if (!response.ok) {
+
+            return;
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        /* =============================================
+           العداد
+           ============================================= */
+
+        document.getElementById(
+            'attendanceCount'
+        ).innerHTML =
+            `الحضور الحالي: ${data.length}`;
+
+
+        /* =============================================
+           القائمة
+           ============================================= */
+
+        if (!data.length) {
+
+            document.getElementById(
+                'attendanceList'
+            ).innerHTML =
+                'لا يوجد حضور حتى الآن';
+
+            return;
+
+        }
+
+
+        document.getElementById(
+            'attendanceList'
+        ).innerHTML =
+            data
+                .map(
+                    (student, index) =>
+                        `${index + 1}. ${student.student_id}`
+                )
+                .join('<br>');
+
+
+    } catch (error) {
+
+        console.error(
+            'Attendance update error:',
+            error
+        );
+
+    }
+
+}
+
+
+/* تحديث كل 3 ثوانٍ */
+
+setInterval(
+    loadAttendance,
+    3000
+);
+
+
+/* تحديث أولي */
+
 loadAttendance();
-</script></body></html>
+
+</script>
+
+
+</body>
+
+</html>
