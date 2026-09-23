@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تحضير رايات</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+body{font-family:Tahoma;background:#f5f5f5;padding:20px}
+.student{padding:6px;border-bottom:1px solid #ddd}
+.card{background:#fff;padding:20px;border-radius:12px;max-width:1000px;margin:auto}
+button{margin:4px;padding:8px 16px}
+.footer{margin-top:20px;background:#f1f1f1;padding:10px;border-radius:8px;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+<h1>تحضير رايات</h1>
+<input type="file" id="excelFile">
+<div id="fileInfo">قم باختيار ملف رايات</div>
+<button id="openBtn">فتح الحضور</button>
+<button onclick="finishAttendance()">إنهاء الحضور</button>
+<button onclick="exportAttendanceFile()">تحميل ملف رايات النهائي</button>
+<div id="sessionInfo"></div>
+<div id="qrcode"></div>
+<hr>
+<h2>الحضور المباشر</h2>
+<div id="attendanceCount">الحضور الحالي: 0</div>
+<br>
+<div id="attendanceList">لا يوجد حضور حتى الآن</div>
+<div class="footer"><p>© 2026</p><p>نادر الوسيدي</p><p>📧 للتواصل والاقتراحات والتطوير</p><p>📱 Telegram: @naderh12</p></div>
+</div>
+<script>
+const SUPABASE_URL='https://paimizculszksstmcfsq.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhaW1pemN1bHN6a3NzdG1jZnNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4MDk4NTYsImV4cCI6MjEwNTM4NTg1Nn0.9MlGrXKL745jPWygSuOSWVh-eLX-sR565zHYDRuufK0';
+</script>
+<script src="js/app.js"></script>
+<script src="js/export.js"></script>
+<script>
+async function loadAttendance(){
+try{
+const currentSession=localStorage.getItem('sessionId');
+if(!currentSession){document.getElementById('attendanceCount').innerHTML='الحضور الحالي: 0';document.getElementById('attendanceList').innerHTML='لا يوجد حضور حتى الآن';return;}
+const response=await fetch(`${SUPABASE_URL}/rest/v1/attendance_temp?session_id=eq.${currentSession}`,{headers:{apikey:SUPABASE_KEY,Authorization:`Bearer ${SUPABASE_KEY}`}});
+const data=await response.json();
+if(!Array.isArray(data)) return;
+document.getElementById('attendanceCount').innerHTML=`الحضور الحالي: ${data.length}`;
+let html='';
+if(data.length===0){html='لا يوجد حضور حتى الآن';} else {data.forEach(item=>{html+=`<div class="student">${item.student_id}</div>`;});}
+document.getElementById('attendanceList').innerHTML=html;
+}catch(error){console.error(error);}
+}
+setInterval(loadAttendance,3000);
+loadAttendance();
+</script>
+</body>
+</html>
